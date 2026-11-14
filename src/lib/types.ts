@@ -87,7 +87,7 @@ export interface SharePrice {
   exchangeName: string | null
   asOf: string
   marketState: string | null
-  source: "yahoo"
+  source: "yahoo" | "nasdaq" | "cnbc"
 }
 
 export interface TokenMarketPrice {

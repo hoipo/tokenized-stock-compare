@@ -30,9 +30,9 @@ export default function AboutPage() {
             identifiers. Paginated via <code>?page=</code>.
           </li>
           <li>
-            <strong className="text-[var(--ink)]">Yahoo Finance chart API</strong> —
-            underlying share last / regular market price. May reflect prior close when
-            markets are shut.
+            <strong className="text-[var(--ink)]">Share quotes</strong> — Yahoo Finance
+            first, then Nasdaq and CNBC if Yahoo is rate-limited or unavailable. Weekend
+            and after-hours figures may reflect the prior regular-session close.
           </li>
           <li>
             <strong className="text-[var(--ink)]">Dexscreener</strong> — token market mid
@@ -40,8 +40,10 @@ export default function AboutPage() {
             deployment address. Thin or unrelated pairs are ignored.
           </li>
           <li>
-            <strong className="text-[var(--ink)]">Pyth Hermes</strong> — optional fallback
-            when a hermesId is published and the endpoint responds.
+            <strong className="text-[var(--ink)]">Pyth Hermes</strong> — optional oracle
+            reference only, and only when the public endpoint responds. It is not used
+            for the premium calculation. A 401 means the feed currently requires
+            credentials, so the page skips it.
           </li>
         </ul>
       </section>

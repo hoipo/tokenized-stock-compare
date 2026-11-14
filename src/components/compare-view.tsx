@@ -10,6 +10,7 @@ import {
   formatUsd,
   shortenAddress,
 } from "@/lib/format"
+import { shareSourceLabel } from "@/lib/share-quote"
 import type { ComparisonData } from "@/lib/types"
 
 export function CompareView({ data }: { data: ComparisonData }) {
@@ -67,7 +68,7 @@ export function CompareView({ data }: { data: ComparisonData }) {
           value={formatUsd(data.share?.price)}
           detail={
             data.share
-              ? `${data.share.currency} · ${data.share.exchangeName || "exchange"} · Yahoo · as of ${formatDateTime(data.share.asOf, exchangeTz)}${data.share.marketState ? ` · ${data.share.marketState}` : ""}`
+              ? `${data.share.currency} · ${data.share.exchangeName || "exchange"} · ${shareSourceLabel(data.share.source)} · as of ${formatDateTime(data.share.asOf, exchangeTz)}${data.share.marketState ? ` · ${data.share.marketState}` : ""}`
               : "Unavailable — share quote could not be loaded."
           }
         />

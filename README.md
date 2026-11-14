@@ -39,7 +39,7 @@ Optional environment overrides: copy `.env.example` to `.env.local`.
 | Source | Use |
 | --- | --- |
 | xStocks public API (`/api/v2/public/assets`) | Registry, deployments, trading hours, halt status, oracles |
-| Yahoo Finance chart API | Underlying share last / regular market price |
+| Yahoo Finance, Nasdaq, or CNBC | Underlying share last / regular market price (Yahoo first, then fallbacks) |
 | Dexscreener | Token mid and pool liquidity for deployment-matched pairs |
 | Pyth Hermes | Optional oracle mid when a hermesId is available |
 

@@ -2,7 +2,7 @@ import { cacheLife } from "next/cache"
 import { fetchAsset, fetchHaltStatus, fetchPythHermesId } from "@/lib/adapters/xstocks"
 import { fetchTokenLiquidity } from "@/lib/adapters/dexscreener"
 import { fetchPythPrice } from "@/lib/adapters/pyth"
-import { fetchSharePrice } from "@/lib/adapters/yahoo"
+import { fetchSharePrice } from "@/lib/adapters/share-price"
 import { CACHE_REVALIDATE_SECONDS } from "@/lib/constants"
 import { settledValue } from "@/lib/http"
 import { computePremiumDiscount } from "@/lib/premium"
@@ -49,8 +49,8 @@ export async function buildComparison(query: string): Promise<ComparisonData | n
   ])
 
   const share = shareResult.price
-  if (shareResult.error)
-    sourceErrors.push({ source: "Yahoo Finance", message: shareResult.error })
+  if (!share && shareResult.error)
+    sourceErrors.push({ source: "Share price", message: shareResult.error })
 
   let tokenPrice: TokenMarketPrice | null = liquidityResult.tokenPrice
   const liquidity = liquidityResult.pools
@@ -62,7 +62,7 @@ export async function buildComparison(query: string): Promise<ComparisonData | n
   if (hermesResult.ok && hermesResult.value) {
     const pythResult = await fetchPythPrice(hermesResult.value)
     if (pythResult.price) oraclePrice = pythResult.price
-    else if (pythResult.error)
+    else if (pythResult.error && !/HTTP 401|unauthorized/i.test(pythResult.error))
       sourceErrors.push({ source: "Pyth Hermes", message: pythResult.error })
   } else if (!hermesResult.ok) {
     sourceErrors.push({ source: "xStocks oracles", message: hermesResult.error })
