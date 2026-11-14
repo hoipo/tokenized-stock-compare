@@ -26,7 +26,15 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description: SITE_TAGLINE,
     type: "website",
+    url: SITE_URL,
   },
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? {
+        verification: {
+          google: process.env.GOOGLE_SITE_VERIFICATION,
+        },
+      }
+    : {}),
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
