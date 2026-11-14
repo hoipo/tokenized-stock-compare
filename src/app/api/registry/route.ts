@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server"
+import { REGISTRY_CACHE_REVALIDATE_SECONDS } from "@/lib/constants"
+import { sourceFailureMessage } from "@/lib/http"
 import { getAssetRegistry } from "@/lib/services/registry"
 
 export async function GET() {
@@ -12,16 +14,16 @@ export async function GET() {
           entries: registry.entries,
         },
         error: null,
-        meta: { total: registry.entries.length },
+        meta: { total: registry.entries.length, complete: registry.complete },
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=90, stale-while-revalidate=180",
+          "Cache-Control": `public, s-maxage=${REGISTRY_CACHE_REVALIDATE_SECONDS}, stale-while-revalidate=${REGISTRY_CACHE_REVALIDATE_SECONDS * 2}`,
         },
       },
     )
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Registry failed"
+    const message = sourceFailureMessage(error, "Registry failed")
     return NextResponse.json(
       { success: false, data: null, error: message, meta: null },
       { status: 502 },

@@ -1,59 +1,21 @@
 import { cacheLife } from "next/cache"
 import {
-  CACHE_REVALIDATE_SECONDS,
   DEXSCREENER_API_BASE,
   MIN_LIQUIDITY_USD,
+  PRICE_CACHE_EXPIRE_SECONDS,
+  PRICE_CACHE_REVALIDATE_SECONDS,
+  PRICE_CACHE_STALE_SECONDS,
+  UPSTREAM_TIMEOUT_MS,
 } from "@/lib/constants"
-import { sanitizeDexscreenerUrl } from "@/lib/explorers"
-import { fetchJson } from "@/lib/http"
+import { selectRelevantPools, type DexPair } from "@/lib/dex-pools"
+import { fetchJson, sourceFailureMessage } from "@/lib/http"
 import type { Deployment, LiquidityPool, TokenMarketPrice } from "@/lib/types"
 
-interface DexPair {
-  chainId?: string
-  dexId?: string
-  url?: string
-  pairAddress?: string
-  priceUsd?: string
-  liquidity?: { usd?: number }
-  volume?: { h24?: number }
-  pairCreatedAt?: number
-  baseToken?: { address?: string; symbol?: string }
-  quoteToken?: { address?: string; symbol?: string }
-}
-
-interface DexSearchResponse {
+interface DexTokensResponse {
   pairs?: DexPair[] | null
 }
 
-function normalizeAddress(address: string): string {
-  return address.trim().toLowerCase()
-}
-
-function deploymentAddresses(deployments: Deployment[]): Set<string> {
-  return new Set(
-    deployments
-      .map((d) => d.address)
-      .filter(Boolean)
-      .map(normalizeAddress),
-  )
-}
-
-function mapPool(pair: DexPair): LiquidityPool | null {
-  if (!pair.pairAddress || !pair.chainId || !pair.dexId) return null
-  const price = pair.priceUsd ? Number(pair.priceUsd) : null
-  return {
-    pairAddress: pair.pairAddress,
-    dexId: pair.dexId,
-    chainId: pair.chainId,
-    baseTokenSymbol: pair.baseToken?.symbol || "?",
-    quoteTokenSymbol: pair.quoteToken?.symbol || "?",
-    priceUsd: price != null && Number.isFinite(price) ? price : null,
-    liquidityUsd: pair.liquidity?.usd ?? null,
-    volume24hUsd: pair.volume?.h24 ?? null,
-    url: sanitizeDexscreenerUrl({ url: pair.url, chainId: pair.chainId, pairAddress: pair.pairAddress }),
-    baseTokenAddress: pair.baseToken?.address || "",
-  }
-}
+const ADDRESS_CHUNK = 30
 
 export async function fetchTokenLiquidity(params: {
   tokenSymbol: string
@@ -64,37 +26,23 @@ export async function fetchTokenLiquidity(params: {
   error: string | null
 }> {
   "use cache"
-  cacheLife({ revalidate: CACHE_REVALIDATE_SECONDS, expire: 3600 })
+  cacheLife({
+    stale: PRICE_CACHE_STALE_SECONDS,
+    revalidate: PRICE_CACHE_REVALIDATE_SECONDS,
+    expire: PRICE_CACHE_EXPIRE_SECONDS,
+  })
 
   try {
-    const { tokenSymbol, deployments } = params
-    const known = deploymentAddresses(deployments)
-    const data = await fetchJson<DexSearchResponse>(
-      `${DEXSCREENER_API_BASE}/search?q=${encodeURIComponent(tokenSymbol)}`,
-    )
+    const addresses = uniqueAddresses(params.deployments)
+    if (addresses.length === 0) return { pools: [], tokenPrice: null, error: null }
 
-    const pairs = data.pairs ?? []
-    const relevant = pairs
-      .filter((pair) => {
-        const base = pair.baseToken?.address
-        const quote = pair.quoteToken?.address
-        if (!base && !quote) return false
-        const baseMatch = base ? known.has(normalizeAddress(base)) : false
-        const quoteMatch = quote ? known.has(normalizeAddress(quote)) : false
-        return baseMatch || quoteMatch
-      })
-      .map(mapPool)
-      .filter((pool): pool is LiquidityPool => pool != null)
-      .filter((pool) => (pool.liquidityUsd ?? 0) >= MIN_LIQUIDITY_USD)
-      .sort((a, b) => (b.liquidityUsd ?? 0) - (a.liquidityUsd ?? 0))
-
-    const preferred = relevant.filter((pool) =>
-      known.has(normalizeAddress(pool.baseTokenAddress)),
-    )
-    const ranked = preferred.length > 0 ? preferred : relevant
-    const top = ranked.slice(0, 8)
-    const best = top[0]
-
+    const pairs = await fetchPairsByAddress(addresses)
+    const pools = selectRelevantPools({
+      pairs,
+      deployments: params.deployments,
+      minLiquidityUsd: MIN_LIQUIDITY_USD,
+    })
+    const best = pools[0]
     const tokenPrice: TokenMarketPrice | null =
       best?.priceUsd != null
         ? {
@@ -108,12 +56,53 @@ export async function fetchTokenLiquidity(params: {
           }
         : null
 
-    return { pools: top, tokenPrice, error: null }
+    return { pools, tokenPrice, error: null }
   } catch (error) {
     return {
       pools: [],
       tokenPrice: null,
-      error: error instanceof Error ? error.message : "Dexscreener request failed",
+      error: sourceFailureMessage(error, "Dexscreener request failed"),
     }
   }
+}
+
+function uniqueAddresses(deployments: Deployment[]): string[] {
+  const seen = new Set<string>()
+  const addresses: string[] = []
+  for (const deployment of deployments) {
+    const address = deployment.address?.trim()
+    if (!address) continue
+    const key = address.startsWith("0x") || address.startsWith("0X") ? address.toLowerCase() : address
+    if (seen.has(key)) continue
+    seen.add(key)
+    addresses.push(address)
+  }
+  return addresses
+}
+
+async function fetchPairsByAddress(addresses: string[]): Promise<DexPair[]> {
+  const chunks: string[][] = []
+  for (let index = 0; index < addresses.length; index += ADDRESS_CHUNK)
+    chunks.push(addresses.slice(index, index + ADDRESS_CHUNK))
+
+  const results = await Promise.allSettled(
+    chunks.map((chunk) => {
+      const path = chunk.map((address) => encodeURIComponent(address)).join(",")
+      return fetchJson<DexTokensResponse>(`${DEXSCREENER_API_BASE}/tokens/${path}`, {
+        timeoutMs: UPSTREAM_TIMEOUT_MS,
+      })
+    }),
+  )
+
+  const pairs: DexPair[] = []
+  const errors: string[] = []
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      pairs.push(...(result.value.pairs ?? []))
+      continue
+    }
+    errors.push(sourceFailureMessage(result.reason, "Dexscreener request failed"))
+  }
+  if (pairs.length === 0 && errors.length > 0) throw new Error(errors[0])
+  return pairs
 }

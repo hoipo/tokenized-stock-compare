@@ -43,7 +43,7 @@ Optional environment overrides: copy `.env.example` to `.env.local`.
 | Dexscreener | Token mid and pool liquidity for deployment-matched pairs |
 | Pyth Hermes | Optional oracle mid when a hermesId is available |
 
-Server-side fetches are cached (~90s). The browser does not call issuer/Yahoo/Dexscreener on every keystroke.
+Share quotes, DEX pools, and assembled comparisons are cached for about 90 seconds. The asset registry is cached for about 30 minutes. Autocomplete downloads that registry once and filters it in the browser.
 
 ## Product rules
 

@@ -31,13 +31,16 @@ export default function AboutPage() {
           </li>
           <li>
             <strong className="text-[var(--ink)]">Share quotes</strong> — Yahoo Finance
-            first, then Nasdaq and CNBC if Yahoo is rate-limited or unavailable. Weekend
-            and after-hours figures may reflect the prior regular-session close.
+            when it responds quickly. Nasdaq and CNBC are requested together if Yahoo is
+            slow or unavailable. Weekend and after-hours figures may reflect the prior
+            regular-session close. A missing timestamp stays unlabeled.
           </li>
           <li>
             <strong className="text-[var(--ink)]">Dexscreener</strong> — token market mid
-            and pool liquidity for pairs whose base/quote mint matches a known
-            deployment address. Thin or unrelated pairs are ignored.
+            and pool liquidity looked up by deployment address. Only pairs whose base
+            token matches a known deployment are kept. Thin pairs are ignored. A $1,000
+            figure on the page is that notional divided by reported pool depth, not a
+            fee or price-impact estimate.
           </li>
           <li>
             <strong className="text-[var(--ink)]">Pyth Hermes</strong> — optional oracle
@@ -63,9 +66,10 @@ export default function AboutPage() {
           Caching
         </h2>
         <p>
-          Server-side fetches are cached for roughly 60–120 seconds. Browser clients do
-          not call issuer, Yahoo, or Dexscreener APIs on every keystroke; search
-          autocomplete uses this site&apos;s route handlers against the cached registry.
+          The asset list is cached for about 30 minutes. Share quotes, DEX pools, halt
+          status, and each assembled comparison are cached for about 90 seconds. Search
+          downloads that registry once and filters it in the browser, so keystrokes do
+          not call issuer, Yahoo, or Dexscreener.
         </p>
       </section>
 

@@ -16,6 +16,32 @@ export function parseMoney(value: string | number | null | undefined): number | 
   return Number.isFinite(n) && n > 0 ? n : null
 }
 
+const ETF_UNDERLYINGS = new Set([
+  "SPY",
+  "QQQ",
+  "IWM",
+  "DIA",
+  "VOO",
+  "VTI",
+  "EFA",
+  "EEM",
+  "GLD",
+  "SLV",
+  "TLT",
+  "HYG",
+  "LQD",
+  "XLF",
+  "XLK",
+  "XLE",
+  "ARKK",
+])
+
+export function quoteAssetClasses(symbol: string): Array<"stocks" | "etf"> {
+  const upper = symbol.trim().toUpperCase()
+  if (ETF_UNDERLYINGS.has(upper)) return ["etf", "stocks"]
+  return ["stocks", "etf"]
+}
+
 export function shareSourceLabel(source: SharePrice["source"]): string {
   switch (source) {
     case "yahoo":
@@ -82,9 +108,9 @@ export function parseLooseDate(text: string): { year: number; month: number; day
   return null
 }
 
-export function asOfFromMarketDate(text: string | null | undefined): string {
-  if (!text) return new Date().toISOString()
+export function asOfFromMarketDate(text: string | null | undefined): string | null {
+  if (!text) return null
   const parsed = parseLooseDate(text)
-  if (!parsed) return new Date().toISOString()
+  if (!parsed) return null
   return closeAsOfInNewYork(parsed.year, parsed.month, parsed.day)
 }

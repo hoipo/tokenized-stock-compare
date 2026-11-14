@@ -1,10 +1,11 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, permanentRedirect } from "next/navigation"
 import { Suspense } from "react"
 import { CompareView } from "@/components/compare-view"
 import { SearchBox } from "@/components/search-box"
-import { FEATURED_UNDERLYINGS, normalizeTicker } from "@/lib/ticker"
+import { sourceFailureMessage } from "@/lib/http"
+import { FEATURED_UNDERLYINGS, comparePath, normalizeTicker } from "@/lib/ticker"
 import { buildComparison } from "@/lib/services/compare"
 import { resolveTicker } from "@/lib/services/registry"
 
@@ -29,7 +30,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const title = `${resolved.underlyingSymbol} vs ${resolved.tokenSymbol}: price, premium, and liquidity`
     const description = `Compare ${resolved.underlyingSymbol} listed share price with ${resolved.tokenSymbol}, including premium/discount, trading hours, deployments, and DEX liquidity.`
-    return { title, description, openGraph: { title, description } }
+    const canonical = comparePath(resolved.underlyingSymbol)
+    return {
+      title,
+      description,
+      openGraph: { title, description },
+      alternates: canonical ? { canonical } : undefined,
+    }
   } catch {
     return {
       title: `${ticker.toUpperCase()} comparison`,
@@ -42,12 +49,27 @@ async function ComparisonSection({ ticker }: { ticker: string }) {
   const normalized = normalizeTicker(ticker)
   if (!normalized.cleaned) notFound()
 
-  let data = null
+  let resolved: Awaited<ReturnType<typeof resolveTicker>> = null
   let fatal: string | null = null
   try {
-    data = await buildComparison(normalized.cleaned)
+    resolved = await resolveTicker(normalized.cleaned)
   } catch (error) {
-    fatal = error instanceof Error ? error.message : "Comparison failed"
+    fatal = sourceFailureMessage(error, "Comparison failed")
+  }
+
+  if (!fatal && resolved) {
+    const canonical = comparePath(resolved.underlyingSymbol)
+    if (canonical && ticker !== resolved.underlyingSymbol.toLowerCase())
+      permanentRedirect(canonical)
+  }
+
+  let data: Awaited<ReturnType<typeof buildComparison>> = null
+  if (!fatal && resolved) {
+    try {
+      data = await buildComparison(resolved.underlyingSymbol)
+    } catch (error) {
+      fatal = sourceFailureMessage(error, "Comparison failed")
+    }
   }
 
   if (fatal) {
@@ -87,7 +109,7 @@ async function ComparisonSection({ ticker }: { ticker: string }) {
     )
   }
 
-  return <CompareView data={data} />
+  return <CompareView data={data} initialNow={data.fetchedAt} />
 }
 
 export default async function ComparePage({ params }: PageProps) {

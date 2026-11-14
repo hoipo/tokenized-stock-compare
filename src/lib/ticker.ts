@@ -48,6 +48,12 @@ export function isValidTickerShape(input: string): boolean {
   return /^[A-Za-z0-9.]{1,16}$/.test(cleaned)
 }
 
+export function comparePath(symbol: string): string | null {
+  const slug = symbol.trim().toLowerCase()
+  if (!/^[a-z0-9.]{1,16}$/.test(slug)) return null
+  return `/compare/${slug}`
+}
+
 export const FEATURED_UNDERLYINGS = [
   "TSLA",
   "AAPL",

@@ -85,7 +85,7 @@ export interface SharePrice {
   price: number
   currency: string
   exchangeName: string | null
-  asOf: string
+  asOf: string | null
   marketState: string | null
   source: "yahoo" | "nasdaq" | "cnbc"
 }
@@ -131,9 +131,11 @@ export interface PremiumResult {
   reading: string
 }
 
-export interface RoundTripEstimate {
-  available: boolean
-  estimatedCostUsd: number | null
+export interface DepthContext {
+  notionalUsd: number
+  topPoolLiquidityUsd: number | null
+  fractionOfPool: number | null
+  reading: string
   assumptions: string[]
   unavailableReason: string | null
 }
@@ -152,7 +154,7 @@ export interface ComparisonData {
   halt: HaltStatus | null
   deployments: Deployment[]
   liquidity: LiquidityPool[]
-  roundTrip: RoundTripEstimate
+  depth: DepthContext
   sourceErrors: SourceError[]
   fetchedAt: string
 }

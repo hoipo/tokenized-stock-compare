@@ -1,6 +1,11 @@
 import { cacheLife } from "next/cache"
-import { CACHE_REVALIDATE_SECONDS, PYTH_HERMES_BASE } from "@/lib/constants"
-import { fetchJson } from "@/lib/http"
+import {
+  PRICE_CACHE_EXPIRE_SECONDS,
+  PRICE_CACHE_REVALIDATE_SECONDS,
+  PRICE_CACHE_STALE_SECONDS,
+  PYTH_HERMES_BASE,
+} from "@/lib/constants"
+import { fetchJson, sourceFailureMessage } from "@/lib/http"
 import type { TokenMarketPrice } from "@/lib/types"
 
 interface HermesParsed {
@@ -20,7 +25,11 @@ export async function fetchPythPrice(
   hermesId: string,
 ): Promise<{ price: TokenMarketPrice | null; error: string | null }> {
   "use cache"
-  cacheLife({ revalidate: CACHE_REVALIDATE_SECONDS, expire: 3600 })
+  cacheLife({
+    stale: PRICE_CACHE_STALE_SECONDS,
+    revalidate: PRICE_CACHE_REVALIDATE_SECONDS,
+    expire: PRICE_CACHE_EXPIRE_SECONDS,
+  })
 
   try {
     const url = `${PYTH_HERMES_BASE}/updates/price/latest?ids%5B%5D=${encodeURIComponent(hermesId)}`
@@ -38,7 +47,7 @@ export async function fetchPythPrice(
 
     const asOf = parsed?.price?.publish_time
       ? new Date(parsed.price.publish_time * 1000).toISOString()
-      : new Date().toISOString()
+      : null
 
     return {
       price: {
@@ -55,7 +64,7 @@ export async function fetchPythPrice(
   } catch (error) {
     return {
       price: null,
-      error: error instanceof Error ? error.message : "Pyth Hermes request failed",
+      error: sourceFailureMessage(error, "Pyth Hermes request failed"),
     }
   }
 }

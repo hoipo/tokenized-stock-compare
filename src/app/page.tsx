@@ -1,17 +1,22 @@
 import Link from "next/link"
 import { SearchBox } from "@/components/search-box"
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants"
+import { sourceFailureMessage } from "@/lib/http"
 import { getFeaturedEntries } from "@/lib/services/registry"
+import { comparePath } from "@/lib/ticker"
+import type { RegistryEntry } from "@/lib/types"
 
 export default async function HomePage() {
-  let featured: Awaited<ReturnType<typeof getFeaturedEntries>> = []
+  let featured: RegistryEntry[] = []
+  let registryIncomplete = false
   let featuredError: string | null = null
 
   try {
-    featured = await getFeaturedEntries()
+    const result = await getFeaturedEntries()
+    featured = result.entries
+    registryIncomplete = !result.complete
   } catch (error) {
-    featuredError =
-      error instanceof Error ? error.message : "Featured registry unavailable."
+    featuredError = sourceFailureMessage(error, "Featured registry unavailable.")
   }
 
   return (
@@ -36,6 +41,12 @@ export default async function HomePage() {
         >
           Featured comparisons
         </h2>
+        {registryIncomplete ? (
+          <p className="text-sm text-[var(--muted)]">
+            The registry may be missing names because a later page failed to load. Search
+            still covers the names that were retrieved.
+          </p>
+        ) : null}
         {featuredError ? (
           <p className="text-sm text-[var(--danger)]">
             Featured names unavailable: {featuredError}
@@ -49,7 +60,7 @@ export default async function HomePage() {
             {featured.map((entry) => (
               <li key={entry.tokenSymbol}>
                 <Link
-                  href={`/compare/${entry.underlyingSymbol}`}
+                  href={comparePath(entry.underlyingSymbol) ?? "/"}
                   className="inline-flex items-center gap-2 rounded-sm border border-[var(--line)] bg-white px-3 py-2 text-sm text-[var(--ink)] hover:bg-[var(--wash)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                 >
                   <span className="font-medium">{entry.underlyingSymbol}</span>

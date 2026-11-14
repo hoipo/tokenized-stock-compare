@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react"
 
+function parseClock(iso: string): Date | null {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date
+}
+
 function formatClock(date: Date, timeZone: string): string {
   try {
     return new Intl.DateTimeFormat("en-US", {
@@ -16,21 +22,27 @@ function formatClock(date: Date, timeZone: string): string {
 }
 
 export function DualClocks({
+  initialNow,
   exchangeTimezone,
   exchangeLabel,
   nextChangeAt,
 }: {
+  initialNow: string
   exchangeTimezone: string | null
   exchangeLabel: string | null
   nextChangeAt: string | null
 }) {
-  const [now, setNow] = useState<Date | null>(null)
+  const [now, setNow] = useState<Date | null>(() => parseClock(initialNow))
   const exchangeTz = exchangeTimezone || "America/New_York"
 
   useEffect(() => {
-    setNow(new Date())
-    const id = window.setInterval(() => setNow(new Date()), 30_000)
-    return () => window.clearInterval(id)
+    const tick = () => setNow(new Date())
+    const immediate = window.setTimeout(tick, 0)
+    const id = window.setInterval(tick, 30_000)
+    return () => {
+      window.clearTimeout(immediate)
+      window.clearInterval(id)
+    }
   }, [])
 
   let nextChange: string | null = null

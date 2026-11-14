@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { isValidTickerShape, normalizeTicker } from "@/lib/ticker"
+import { comparePath, isValidTickerShape, normalizeTicker } from "@/lib/ticker"
 
 describe("normalizeTicker", () => {
   it("normalizes bare equity tickers", () => {
@@ -57,5 +57,17 @@ describe("isValidTickerShape", () => {
   it("rejects empty or oversized input", () => {
     expect(isValidTickerShape("")).toBe(false)
     expect(isValidTickerShape("THISISWAYTOOLONGTICKER")).toBe(false)
+  })
+})
+
+describe("comparePath", () => {
+  it("builds a lowercase canonical path", () => {
+    expect(comparePath("TSLA")).toBe("/compare/tsla")
+    expect(comparePath("BRK.B")).toBe("/compare/brk.b")
+  })
+
+  it("rejects shapes that are not tickers", () => {
+    expect(comparePath("../admin")).toBeNull()
+    expect(comparePath("")).toBeNull()
   })
 })

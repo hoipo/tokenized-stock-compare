@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
+  asOfFromMarketDate,
   closeAsOfInNewYork,
   listedSymbolCandidates,
   parseMoney,
+  quoteAssetClasses,
   shareSourceLabel,
 } from "@/lib/share-quote"
 
@@ -37,5 +39,17 @@ describe("share quote helpers", () => {
 
   it("treats a date-only Nasdaq stamp as 16:00 in New York", () => {
     expect(closeAsOfInNewYork(2026, 11, 13)).toBe("2026-11-13T21:00:00.000Z")
+    expect(asOfFromMarketDate("Nov 13, 2026")).toBe("2026-11-13T21:00:00.000Z")
+  })
+
+  it("leaves as-of empty when the market date cannot be parsed", () => {
+    expect(asOfFromMarketDate("not a date")).toBeNull()
+    expect(asOfFromMarketDate(null)).toBeNull()
+    expect(asOfFromMarketDate("")).toBeNull()
+  })
+
+  it("tries the ETF quote class before stocks for known funds", () => {
+    expect(quoteAssetClasses("spy")).toEqual(["etf", "stocks"])
+    expect(quoteAssetClasses("TSLA")).toEqual(["stocks", "etf"])
   })
 })

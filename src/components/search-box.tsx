@@ -3,11 +3,41 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useId, useRef, useState, useTransition } from "react"
+import { rankRegistryEntries } from "@/lib/registry-search"
+import { comparePath } from "@/lib/ticker"
 
 interface Suggestion {
   tokenSymbol: string
   underlyingSymbol: string
   name: string
+}
+
+interface RegistryResponse {
+  success: boolean
+  data: { entries: Suggestion[] } | null
+  error: string | null
+}
+
+let registryEntries: Suggestion[] | null = null
+let registryLoad: Promise<Suggestion[]> | null = null
+
+function loadRegistryEntries(): Promise<Suggestion[]> {
+  if (registryEntries) return Promise.resolve(registryEntries)
+  if (!registryLoad) {
+    registryLoad = fetch("/api/registry")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("registry failed")
+        const body = (await response.json()) as RegistryResponse
+        if (!body.success || !body.data) throw new Error(body.error || "registry failed")
+        registryEntries = body.data.entries
+        return body.data.entries
+      })
+      .catch((error: unknown) => {
+        registryLoad = null
+        throw error
+      })
+  }
+  return registryLoad
 }
 
 export function SearchBox({
@@ -21,11 +51,13 @@ export function SearchBox({
   const listId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState(initialQuery)
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
-  const [open, setOpen] = useState(false)
+  const [entries, setEntries] = useState<Suggestion[] | null>(() => registryEntries)
+  const [dismissed, setDismissed] = useState(initialQuery.trim().length > 0)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const suggestions = query.trim() && entries ? rankRegistryEntries(entries, query, 8) : []
+  const open = !dismissed && suggestions.length > 0
 
   useEffect(() => {
     if (!autofocus) return
@@ -33,46 +65,25 @@ export function SearchBox({
   }, [autofocus])
 
   useEffect(() => {
-    const trimmed = query.trim()
-    if (trimmed.length < 1) {
-      setSuggestions([])
-      setOpen(false)
-      return
-    }
-
-    const controller = new AbortController()
-    const timer = window.setTimeout(async () => {
-      try {
-        const response = await fetch(
-          `/api/search?q=${encodeURIComponent(trimmed)}`,
-          { signal: controller.signal },
-        )
-        if (!response.ok) throw new Error("Search failed")
-        const data = (await response.json()) as {
-          success: boolean
-          data: Suggestion[] | null
-          error: string | null
-        }
-        if (!data.success) throw new Error(data.error || "Search failed")
-        setSuggestions(data.data ?? [])
-        setOpen(true)
-        setActiveIndex(-1)
-        setError(null)
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return
-        setError("Autocomplete unavailable right now.")
-      }
-    }, 180)
-
+    if (entries) return
+    let cancelled = false
+    loadRegistryEntries()
+      .then((next) => {
+        if (!cancelled) setEntries(next)
+      })
+      .catch(() => {
+        if (!cancelled) setError("Autocomplete unavailable right now.")
+      })
     return () => {
-      controller.abort()
-      window.clearTimeout(timer)
+      cancelled = true
     }
-  }, [query])
+  }, [entries])
 
   function go(symbol: string) {
+    const href = comparePath(symbol)
+    if (!href) return
     startTransition(() => {
-      router.push(`/compare/${encodeURIComponent(symbol)}`)
+      router.push(href)
     })
   }
 
@@ -84,7 +95,7 @@ export function SearchBox({
       activeIndex >= 0 && suggestions[activeIndex]
         ? suggestions[activeIndex].underlyingSymbol
         : value
-    setOpen(false)
+    setDismissed(true)
     go(chosen)
   }
 
@@ -100,9 +111,13 @@ export function SearchBox({
             id="ticker-search"
             name="q"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onFocus={() => suggestions.length > 0 && setOpen(true)}
-            onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+            onChange={(event) => {
+              setQuery(event.target.value)
+              setActiveIndex(-1)
+              setDismissed(false)
+            }}
+            onFocus={() => setDismissed(false)}
+            onBlur={() => window.setTimeout(() => setDismissed(true), 150)}
             onKeyDown={(event) => {
               if (!open || suggestions.length === 0) return
               if (event.key === "ArrowDown") {
@@ -112,11 +127,12 @@ export function SearchBox({
                 event.preventDefault()
                 setActiveIndex((index) => Math.max(index - 1, 0))
               } else if (event.key === "Escape") {
-                setOpen(false)
+                setDismissed(true)
               }
             }}
             placeholder="e.g. TSLA or TSLAx"
             autoComplete="off"
+            role="combobox"
             aria-autocomplete="list"
             aria-controls={listId}
             aria-expanded={open}
@@ -142,7 +158,7 @@ export function SearchBox({
           {suggestions.map((item, index) => (
             <li key={`${item.tokenSymbol}-${item.underlyingSymbol}`} role="option" aria-selected={index === activeIndex}>
               <Link
-                href={`/compare/${item.underlyingSymbol}`}
+                href={comparePath(item.underlyingSymbol) ?? "/"}
                 className={`flex items-center justify-between gap-3 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)] ${
                   index === activeIndex ? "bg-[var(--wash)]" : "hover:bg-[var(--wash)]"
                 }`}

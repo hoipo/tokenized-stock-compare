@@ -13,13 +13,26 @@ import {
 import { shareSourceLabel } from "@/lib/share-quote"
 import type { ComparisonData } from "@/lib/types"
 
-export function CompareView({ data }: { data: ComparisonData }) {
+export function CompareView({
+  data,
+  initialNow,
+}: {
+  data: ComparisonData
+  initialNow: string
+}) {
   const exchangeTz = data.trading?.exchange?.timezone || "America/New_York"
   const isHalted =
     data.halt?.isMarketTradingHalted ||
     data.halt?.isAtomicTradingHalted ||
     data.trading?.isTradingHalted ||
     false
+  const haltLabel = isHalted
+    ? "Trading halt indicated"
+    : data.halt
+      ? "No halt indicated"
+      : data.trading
+        ? "Halt endpoint unavailable; asset feed does not flag a halt"
+        : "Unavailable"
 
   return (
     <div className="space-y-10">
@@ -66,11 +79,7 @@ export function CompareView({ data }: { data: ComparisonData }) {
         <Metric
           label={`${data.underlyingSymbol} share`}
           value={formatUsd(data.share?.price)}
-          detail={
-            data.share
-              ? `${data.share.currency} · ${data.share.exchangeName || "exchange"} · ${shareSourceLabel(data.share.source)} · as of ${formatDateTime(data.share.asOf, exchangeTz)}${data.share.marketState ? ` · ${data.share.marketState}` : ""}`
-              : "Unavailable — share quote could not be loaded."
-          }
+          detail={shareDetail(data, exchangeTz)}
         />
         <Metric
           label={`${data.tokenSymbol} token`}
@@ -121,16 +130,11 @@ export function CompareView({ data }: { data: ComparisonData }) {
           />
           <StatusRow
             label="Halt flags"
-            value={
-              isHalted
-                ? "Trading halt indicated"
-                : data.halt || data.trading
-                  ? "No halt indicated"
-                  : "Unavailable"
-            }
+            value={haltLabel}
           />
         </div>
         <DualClocks
+          initialNow={initialNow}
           exchangeTimezone={exchangeTz}
           exchangeLabel={data.trading?.exchange?.abbreviation || data.trading?.exchange?.name || null}
           nextChangeAt={data.trading?.nextChangeAt ?? null}
@@ -246,23 +250,14 @@ export function CompareView({ data }: { data: ComparisonData }) {
         )}
       </section>
 
-      <section aria-labelledby="cost-heading" className="space-y-3">
-        <h2 id="cost-heading" className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]">
-          Round-trip cost context
+      <section aria-labelledby="depth-heading" className="space-y-3">
+        <h2 id="depth-heading" className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]">
+          Depth versus $1,000
         </h2>
         <div className="rounded-sm border border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]">
-          {data.roundTrip.available && data.roundTrip.estimatedCostUsd != null ? (
-            <p className="text-[var(--ink)]">
-              Estimated $1,000 round-trip cost: {formatUsd(data.roundTrip.estimatedCostUsd)}
-            </p>
-          ) : (
-            <p>
-              <span className="font-medium text-[var(--ink)]">Unavailable.</span>{" "}
-              {data.roundTrip.unavailableReason}
-            </p>
-          )}
+          <p className="text-[var(--ink)]">{data.depth.reading}</p>
           <ul className="mt-3 list-disc space-y-1 pl-5">
-            {data.roundTrip.assumptions.map((item) => (
+            {data.depth.assumptions.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
@@ -284,6 +279,15 @@ export function CompareView({ data }: { data: ComparisonData }) {
       />
     </div>
   )
+}
+
+function shareDetail(data: ComparisonData, exchangeTz: string): string {
+  if (!data.share) return "Unavailable — share quote could not be loaded."
+  const asOf = data.share.asOf
+    ? `as of ${formatDateTime(data.share.asOf, exchangeTz)}`
+    : "as-of time unavailable"
+  const state = data.share.marketState ? ` · ${data.share.marketState}` : ""
+  return `${data.share.currency} · ${data.share.exchangeName || "exchange"} · ${shareSourceLabel(data.share.source)} · ${asOf}${state}`
 }
 
 function Metric({
