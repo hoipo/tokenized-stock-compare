@@ -7,6 +7,7 @@ import { SearchBox } from "@/components/search-box"
 import { sourceFailureMessage } from "@/lib/http"
 import { FEATURED_UNDERLYINGS, comparePath, normalizeTicker } from "@/lib/ticker"
 import { buildComparison } from "@/lib/services/compare"
+import { getRelatedMarketEntries } from "@/lib/services/markets"
 import { resolveTicker } from "@/lib/services/registry"
 
 interface PageProps {
@@ -109,7 +110,8 @@ async function ComparisonSection({ ticker }: { ticker: string }) {
     )
   }
 
-  return <CompareView data={data} initialNow={data.fetchedAt} />
+  const related = await getRelatedMarketEntries(data.underlyingSymbol)
+  return <CompareView data={data} initialNow={data.fetchedAt} related={related} />
 }
 
 export default async function ComparePage({ params }: PageProps) {

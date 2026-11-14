@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { CopyButton } from "@/components/copy-button"
 import { CompareFaq } from "@/components/compare-faq"
 import { DualClocks } from "@/components/clocks"
@@ -10,15 +11,19 @@ import {
   formatUsd,
   shortenAddress,
 } from "@/lib/format"
+import type { MarketListItem } from "@/lib/services/markets"
 import { shareSourceLabel } from "@/lib/share-quote"
+import { comparePath } from "@/lib/ticker"
 import type { ComparisonData } from "@/lib/types"
 
 export function CompareView({
   data,
   initialNow,
+  related = [],
 }: {
   data: ComparisonData
   initialNow: string
+  related?: MarketListItem[]
 }) {
   const exchangeTz = data.trading?.exchange?.timezone || "America/New_York"
   const isHalted =
@@ -272,6 +277,42 @@ export function CompareView({
           ) : null}
         </div>
       </section>
+
+      {related.length > 0 ? (
+        <section aria-labelledby="related-heading" className="space-y-3">
+          <h2
+            id="related-heading"
+            className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]"
+          >
+            Related comparisons
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {related.map((item) => {
+              const href = comparePath(item.underlyingSymbol)
+              if (!href) return null
+              return (
+                <li key={item.underlyingSymbol}>
+                  <Link
+                    href={href}
+                    className="inline-flex items-center gap-2 rounded-sm border border-[var(--line)] bg-white px-3 py-2 text-sm text-[var(--ink)] hover:bg-[var(--wash)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                  >
+                    <span className="font-medium">{item.underlyingSymbol}</span>
+                    <span className="text-[var(--muted)]">{item.tokenSymbol}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+          <p>
+            <Link
+              href="/markets"
+              className="text-sm text-[var(--accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            >
+              Browse all markets
+            </Link>
+          </p>
+        </section>
+      ) : null}
 
       <CompareFaq
         underlyingSymbol={data.underlyingSymbol}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { Disclaimer } from "@/components/disclaimer"
 import { SITE_NAME } from "@/lib/constants"
 
@@ -70,6 +71,22 @@ export default function AboutPage() {
           status, and each assembled comparison are cached for about 90 seconds. Search
           downloads that registry once and filters it in the browser, so keystrokes do
           not call issuer, Yahoo, or Dexscreener.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]">
+          Guides
+        </h2>
+        <p>
+          For plain-language explainers on tokenized stocks and premium readings, see the{" "}
+          <Link
+            href="/guides"
+            className="text-[var(--accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            Guides
+          </Link>{" "}
+          section.
         </p>
       </section>
 

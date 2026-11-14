@@ -19,6 +19,30 @@ export function SiteHeader() {
             Search
           </Link>
           <Link
+            href="/markets"
+            className="hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            Markets
+          </Link>
+          <Link
+            href="/markets/premiums"
+            className="hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            Premiums
+          </Link>
+          <Link
+            href="/guides"
+            className="hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            Guides
+          </Link>
+          <Link
+            href="/share"
+            className="hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            Share
+          </Link>
+          <Link
             href="/about"
             className="hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >

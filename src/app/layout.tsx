@@ -28,6 +28,11 @@ export const metadata: Metadata = {
     type: "website",
     url: SITE_URL,
   },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_TAGLINE,
+  },
   ...(process.env.GOOGLE_SITE_VERIFICATION
     ? {
         verification: {

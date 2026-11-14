@@ -34,6 +34,33 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="flex flex-wrap gap-3 text-sm">
+        <Link
+          href="/markets"
+          className="text-[var(--accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        >
+          Browse all markets
+        </Link>
+        <Link
+          href="/markets/premiums"
+          className="text-[var(--accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        >
+          Premium / discount leaders
+        </Link>
+        <Link
+          href="/guides"
+          className="text-[var(--accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        >
+          Guides
+        </Link>
+        <Link
+          href="/share"
+          className="text-[var(--accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        >
+          Share & embed
+        </Link>
+      </section>
+
       <section aria-labelledby="featured-heading" className="space-y-4">
         <h2
           id="featured-heading"
